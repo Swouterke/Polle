@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import MazeGame from './MazeGame.jsx'
 
 // Change this to whatever name you want on the page
 const NAME = 'Polle'
@@ -218,7 +219,8 @@ function Hearts() {
 function Dialog({ open, onClose, children }) {
   useEffect(() => {
     if (!open) return
-    const onKey = (e) => e.key === 'Escape' && onClose()
+    // ignore Escape while the mini game is open; it closes itself first
+    const onKey = (e) => e.key === 'Escape' && !document.querySelector('.game') && onClose()
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [open, onClose])
@@ -241,8 +243,19 @@ function Dialog({ open, onClose, children }) {
 export default function App() {
   const [dinnerOpen, setDinnerOpen] = useState(false)
   const [planClicks, setPlanClicks] = useState(0)
+  const [gameOpen, setGameOpen] = useState(false)
+  const gameTimer = useRef()
+
+  const clickPlan = () => {
+    const n = planClicks + 1
+    setPlanClicks(n)
+    // 10th click: show "Inari it is" for a moment, then start the mini game
+    if (n === 10) gameTimer.current = setTimeout(() => setGameOpen(true), 1300)
+  }
+  useEffect(() => () => clearTimeout(gameTimer.current), [])
 
   const closeDinner = useCallback(() => {
+    clearTimeout(gameTimer.current)
     setDinnerOpen(false)
     setPlanClicks(0)
   }, [])
@@ -270,14 +283,23 @@ export default function App() {
         <button
           key={planClicks /* re-trigger the wiggle on every click */}
           className={`btn primary plan-btn${planClicks > 0 ? ' wiggle' : ''}`}
-          onClick={() => setPlanClicks((n) => n + 1)}
+          onClick={clickPlan}
         >
           PLANNEN MAAR!
         </button>
         {planClicks >= 3 && <p className="plan-result">Algauw é patatje ...</p>}
         {planClicks >= 6 && <p className="plan-result">Mo echt waar zunne!</p>}
-        {planClicks >= 10 && <p className="plan-result">Inari it is</p>}
+        {planClicks >= 10 && (
+          <>
+            <p className="plan-result">Inari it is</p>
+            <button className="btn secondary go-inari" onClick={() => setGameOpen(true)}>
+              Naar Inari →
+            </button>
+          </>
+        )}
       </Dialog>
+
+      {gameOpen && <MazeGame onClose={() => setGameOpen(false)} />}
     </>
   )
 }
